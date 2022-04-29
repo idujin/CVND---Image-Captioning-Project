@@ -28,6 +28,8 @@ class DecoderRNN(nn.Module):
         self.lstm = nn.LSTM(embed_size, hidden_size, num_layers, 
                             dropout=0.0, batch_first=True)
         self.fc = nn.Linear(hidden_size, vocab_size)
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
     
     def forward(self, features, captions):
         # remove <end>
@@ -43,4 +45,19 @@ class DecoderRNN(nn.Module):
 
     def sample(self, inputs, states=None, max_len=20):
         " accepts pre-processed image tensor (inputs) and returns predicted sentence (list of tensor ids of length max_len) "
-        pass
+        captions = []
+        hidden = (torch.randn(self.num_layers, 1, self.hidden_size).to(inputs.device),
+                torch.randn(self.num_layers, 1, self.hidden_size).to(inputs.device))
+                 
+        for i in range(max_len):
+            out, hidden = self.lstm(inputs, hidden)
+            y = self.fc(out) #[1,1,-1]
+            y = y.squeeze(1) #[1,-1]
+            word_id = y.argmax(dim = 1)
+            captions.append(word_id.item())
+            # next input
+            inputs = self.embed(word_id.unsqueeze(1))
+        return captions
+
+
+ 
